@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import YearlyUsageEditor, { UsageItem } from "./Yearly";
+import EditKpiModal from "./EditKpiModal";
 
 const initialItems: UsageItem[] = [
   {
@@ -23,11 +24,27 @@ const initialItems: UsageItem[] = [
 
 const kpiItem = { id: 28 };
 
+
 function App() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
   return (
     <div style={{ margin: "2rem" }}>
       <h1>Yearly Usage Editor</h1>
-      <YearlyUsageEditor items={initialItems} kpiItem={kpiItem} />
+      {/* <YearlyUsageEditor items={initialItems} kpiItem={kpiItem} /> */}
+      <button onClick={handleOpenModal}>Open Modal</button>
+
+      {/* Passing props to the EditKpiModal */}
+      <EditKpiModal
+        isOpen={isModalOpen}
+        onDismiss={handleCloseModal}
+        kpiItem={kpiItem}
+      />
     </div>
   );
 };

@@ -1,26 +1,9 @@
-/* eslint-disable @microsoft/fluentui-jsx-a11y/no-empty-components-v9 */
 import React, { useState, useMemo, useEffect } from "react";
-import {
-    Checkbox,
-    DefaultButton,
-    Dropdown,
-    IDropdownOption,
-    IconButton,
-    Modal,
-    PrimaryButton,
-    Stack,
-    TextField,
-} from "@fluentui/react";
-
-import styles from "./EditKpiModal.module.scss";
-import { KpiCounterData } from "../../../../kpiCounter/types";
-import useListFieldOptions from "../../../hooks/useListFieldOptions";
-import useEditKpiItem from "../hooks/useEditKpiItem";
 
 type EditKpiModalProps = {
     isOpen: boolean;
     onDismiss: () => void;
-    item: KpiCounterData | undefined;
+    kpiItem: any | undefined;
 };
 
 export interface KpiItem {
@@ -58,24 +41,34 @@ const monthMap: Record<string, keyof KpiItem> = {
 };
 
 const months = Object.keys(monthMap) as (keyof typeof monthMap)[];
-type MonthKey = typeof months[number];
 
-const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, item }) => {
+const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, kpiItem }) => {
+    const itemId = kpiItem?.id ?? 0;
 
-    const itemId = item?.id ?? 0;
-    const { data: items = [], isLoading, isError, error } = useEditKpiItem(itemId);
+    const items: KpiItem[] = [
+        {
+            ID: 1,
+            ConnectionId: 28,
+            Year: 2024,
+            Usesaverage: false,
+            Jan: 100, Feb: null, Mar: 90, Apr: null, May: 110, Jun: null,
+            Jul: 105, Aug: 115, Sep: null, Oct: 125, Nov: null, Dec: 150,
+        },
+        {
+            ID: 2,
+            ConnectionId: 28,
+            Year: 2025,
+            Usesaverage: true,
+            Jan: null, Feb: null, Mar: 95, Apr: 100, May: null, Jun: 120,
+            Jul: 115, Aug: null, Sep: 95, Oct: 100, Nov: null, Dec: 120,
+        },
+    ];
 
-    const { data: yearOptions, isLoading: yearLoading, error: yearError } = useListFieldOptions({
-        listUrl: "/sites/CustomerSuccess/Lists/Progress",
-        fieldInternalOrTitle: "Year",
-        sort: true,
-        includeBlank: false,
-    });
-
-    const yearsList: IDropdownOption[] = useMemo(
-        () => (yearOptions ?? []).map((opt) => ({ key: Number(opt.key), text: opt.text })),
-        [yearOptions]
-    );
+    const yearsList = [
+        { key: 2024, text: "2024" },
+        { key: 2025, text: "2025" },
+        { key: 2026, text: "2026" }
+    ];
 
     const currentYear = new Date().getFullYear();
 
@@ -84,15 +77,13 @@ const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, item }) 
         return match ? currentYear : Number(yearsList[yearsList.length - 1]?.key);
     });
 
+    const [editedItems, setEditedItems] = useState<Record<number, KpiItem>>({});
     const [initialItems] = useState<Record<number, KpiItem>>(() =>
         items.reduce((acc, it) => {
             acc[it.Year] = it;
             return acc;
         }, {} as Record<number, KpiItem>)
     );
-
-    const [editedItems, setEditedItems] = useState<Record<number, KpiItem>>({});
-    const currentItem = editedItems[selectedYear] ?? initialItems[selectedYear];
 
     useEffect(() => {
         setEditedItems((prev) => {
@@ -110,6 +101,8 @@ const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, item }) 
             return { ...prev, [selectedYear]: newItem };
         });
     }, [selectedYear, initialItems, itemId]);
+
+    const currentItem = editedItems[selectedYear] ?? initialItems[selectedYear];
 
     const calculateTotal = (item: KpiItem): string => {
         if (!item) return "0";
@@ -132,7 +125,7 @@ const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, item }) 
         setEditedItems((prev) => ({ ...prev, [updatedItem.Year]: updatedItem }));
     };
 
-    const handleMonthChange = (month: MonthKey, value: string) => {
+    const handleMonthChange = (month: string, value: string) => {
         const parsed = value === "" ? null : Number(value);
         updateEditedItem({ ...currentItem, [monthMap[month]]: parsed });
     };
@@ -179,62 +172,66 @@ const EditKpiModal: React.FC<EditKpiModalProps> = ({ isOpen, onDismiss, item }) 
         onDismiss();
     };
 
+    if (!isOpen) return null;
+
     return (
-        <Modal isOpen={isOpen} onDismiss={handleClose} containerClassName={styles.modalContainer}>
-            <div className={styles.modalHeader}>
-                <h2 className={styles.modalTitle}>Redigera KPI progress data</h2>
-                <IconButton title="Stäng" iconProps={{ iconName: "Cancel" }} ariaLabel="Stäng" onClick={handleClose} />
-            </div>
+        <div className="modal-overlay">
+            <div className="modal">
+                <div className="modal-header">
+                    <h2>Edit KPI Progress Data</h2>
+                    <button className="close-btn" onClick={handleClose}>X</button>
+                </div>
 
-            <div className={styles.modalBody}>
-                {isLoading && <p>Loading KPI items...</p>}
-                {isError && <p>Error loading KPI: {String(error)}</p>}
+                <div className="modal-body">
+                    <div className="form-group">
+                        <label htmlFor="year">Year</label>
+                        <select
+                            id="year"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        >
+                            {yearsList.map((year) => (
+                                <option key={year.key} value={year.key}>
+                                    {year.text}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                <Stack tokens={{ childrenGap: 16 }}>
-                    <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
-                        <Dropdown
-                            label="År"
-                            options={yearsList}
-                            selectedKey={selectedYear}
-                            onChange={(_, option) => setSelectedYear(Number(option?.key))}
-                            placeholder={yearLoading ? "Hämtar år..." : "Välj år"}
-                            disabled={yearLoading || !!yearError}
-                            styles={{ root: { width: 200 } }}
-                        />
-                        <div style={{ display: "flex", height: "32px", alignItems: "center" }}>
-                            <Checkbox
-                                label="Snitt"
+                    <div className="form-group">
+                        <label>
+                            <input
+                                type="checkbox"
                                 checked={currentItem?.Usesaverage || false}
-                                onChange={(_, checked) => handleUsesAverageChange(checked!)}
+                                onChange={(e) => handleUsesAverageChange(e.target.checked)}
+                            />
+                            Use Average
+                        </label>
+                    </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
+                    {months.map((month) => (
+                        <div key={month}>
+                            <label>{month}:</label>
+                            <input
+                                type="number"
+                                value={currentItem?.[monthMap[month]] != null ? String(currentItem[monthMap[month]]) : ""}
+                                onChange={(e) => handleMonthChange(month, e.target.value)}
+                                style={{ width: "50%" }}
                             />
                         </div>
-                    </Stack>
+                    ))}
+                </div>
 
-                    <Stack horizontal wrap tokens={{ childrenGap: 12 }}>
-                        {months.map((month) => (
-                            <Stack key={month} tokens={{ childrenGap: 8 }}>
-                                <label>{month}: </label>
-                                <TextField
-                                    type="number"
-                                    value={currentItem?.[monthMap[month]] != null ? String(currentItem[monthMap[month]]) : ""}
-                                    onChange={(e) => handleMonthChange(month, e.target.value)}
-                                    styles={{
-                                        root: { width: 200 },
-                                        field: { textAlign: "right" },
-                                    }}
-                                />
-                            </Stack>
-                        ))}
-                    </Stack>
-                    <h3 style={{ marginTop: "1rem" }}>Total: {calculateTotal(currentItem)}</h3>
-                </Stack>
+                <h3 style={{ marginTop: "1rem" }}>Total: {calculateTotal(currentItem)}</h3>
 
-                <Stack horizontal tokens={{ childrenGap: 8 }} style={{ marginTop: 20 }}>
-                    <PrimaryButton text="Spara" onClick={handleSave} />
-                    <DefaultButton text="Avbryt" onClick={handleClose} />
-                </Stack>
+                <div className="modal-footer" style={{ marginTop: "1rem" }}>
+                    <button onClick={handleSave}>Spara</button>
+                    <button onClick={handleClose}>Avbryt</button>
+                </div>
             </div>
-        </Modal>
+        </div>
     );
 };
 
